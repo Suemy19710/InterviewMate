@@ -222,4 +222,22 @@ Candidate answer (plain text):
   "improved_answer": "A stronger answer would explicitly describe the controller, service, and repository layers, discuss using @Valid and Bean Validation for request bodies, and explain how to use @ControllerAdvice and exception handlers to return consistent error responses."
 }
 
+```
+## 7. AI Video Interview Room
+### What Feature You Are Proposing
 
+Candidate joins a video room and system:
+
+- records face
+
+- monitors emotion
+
+- monitors hesitation
+
+- monitors engagement
+
+- analyzes voice / speech content
+
+- evaluates interview answers
+
+Using Computer Vision - OpenCV
