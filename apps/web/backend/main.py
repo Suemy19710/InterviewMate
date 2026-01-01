@@ -114,5 +114,8 @@ def health():
 # RUN (optional local run)
 # =========================
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, port=10000)
+    try:
+        import uvicorn
+        uvicorn.run(app, port=10000)
+    except ImportError:
+        print("Error: uvicorn is not installed. Install it with: pip install uvicorn")
