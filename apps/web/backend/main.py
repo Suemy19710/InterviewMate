@@ -1,12 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
+import pdfplumber
+import re
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 from fastapi.middleware.cors import CORSMiddleware
 
+
 from utils.jd_matcher import match_jd_to_resumes_method_3
+from utils.single_cv_jd_matcher import extract_pdf_text, clean_text, skill_match
 
 # -------- Add CORS (so frontend can call API) --------
 app = FastAPI(title="AI Resume Matcher API")
@@ -90,6 +95,44 @@ def match_jd(request: JDRequest):
         "Why it fits?",
         "Missing Skills"
     ]].to_dict(orient="records")
+
+# ----------Single Match Endpoint ----------
+@app.post("/single-match")
+async def single_match(
+    resume: UploadFile = File(...),
+    jd_text: str = Form(...)
+):
+    # 1️⃣ Extract resume text
+    resume_text = extract_pdf_text(resume)
+    resume_clean = clean_text(resume_text)
+    jd_clean = clean_text(jd_text)
+
+    # 2️⃣ Embedding similarity
+    resume_vec = model.encode([resume_clean])
+    jd_vec = model.encode([jd_clean])
+    score = float(cosine_similarity(resume_vec, jd_vec)[0][0])
+    match_percentage = round(score * 100, 2)
+
+    # 3️⃣ Skills
+    jd_skills, fit_skills, missing_skills = skill_match(resume_clean, jd_clean)
+
+    # 4️⃣ Result label
+    if match_percentage >= 80:
+        result = "⭐ Strong Match – Great Fit"
+    elif match_percentage >= 60:
+        result = "👍 Moderate Match – Trainable Fit"
+    else:
+        result = "⚠️ Weak Match – Needs Improvement"
+
+    return {
+        "match_score": match_percentage,
+        "result": result,
+        "total_jd_skills": len(jd_skills),
+        "fit_skills": fit_skills,
+        "missing_skills": missing_skills
+    }
+
+
 
 
 
