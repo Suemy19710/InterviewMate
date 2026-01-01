@@ -4,11 +4,19 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
+from fastapi.middleware.cors import CORSMiddleware
 
 from utils.jd_matcher import match_jd_to_resumes_method_3
 
-
+# -------- Add CORS (so frontend can call API) --------
 app = FastAPI(title="AI Resume Matcher API")
+app.add_middleware(
+    CORSMiddleware, 
+    allow_origins=["*"], 
+    allow_credentials=True, 
+    allow_methods=["*"], 
+    allow_headers=["*"], 
+)
 
 
 # =========================
@@ -95,6 +103,10 @@ def root():
         "message": "AI ATS Backend Ready",
         "version": "Method 3 - Semantic Matching + Explanation"
     }
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 
