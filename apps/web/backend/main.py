@@ -1,7 +1,9 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
 import pdfplumber
 import re
+from fastapi.responses import FileResponse
+import os
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -56,12 +58,19 @@ def load_latest_version():
     print(f"Resumes loaded: {len(df_resume)}")
     print(f"JDs loaded: {len(df_jd)}")
 
-    return df_jd, df_resume, resume_embeddings, model
+    resume_dir = project_root / "data" / "data" / "Resume"
+
+    return df_jd, df_resume, resume_embeddings, model, resume_dir
 
 
-df_jd, df_resume, resume_embeddings, model = load_latest_version()
+df_jd, df_resume, resume_embeddings, model, resume_dir = load_latest_version()
 
-
+def find_resume_path(filename: str) -> Path:
+    """Find the full path of a resume file"""
+    for root, dirs, files in os.walk(resume_dir):
+        if filename in files:
+            return Path(root) / filename
+    return None
 
 # =========================
 # REQUEST MODEL
@@ -133,7 +142,21 @@ async def single_match(
     }
 
 
-
+# ----------Resume PDF Endpoint ----------
+def get_resume_pdf(filename:str):
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    file_path = find_resume_path(filename)
+    
+    if file_path is None or not file_path.exists():
+        raise HTTPException(status_code=404, detail=f"Resume file '{filename}' not found")
+    
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/pdf",
+        filename=filename
+    )
 
 
 # =========================
