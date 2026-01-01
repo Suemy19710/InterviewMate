@@ -1,7 +1,7 @@
 export const API_CONFIG = {
-    BASE_URL: import.meta.env.API_BASE_URL || 'http://localhost:8000',
+    BASE_URL: import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000',
     ENDPOINTS: {
-        MATCH_JD: '/match_jd',
+        MATCH_JD: '/match-jd',
     }
 }
 

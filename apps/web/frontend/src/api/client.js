@@ -1,12 +1,13 @@
-import {API_CONFIG} from '../config/constants'
+import { API_CONFIG } from '../config/constants'
 
-class ApiClient{
-    constructor(baseURL) {
-        this.baseURL = baseURL
-    }
-    
-    async request(endpoint, options = {}){
-        
+class ApiClient {
+  constructor(baseURL) {
+    this.baseURL = baseURL
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -17,11 +18,14 @@ class ApiClient{
 
     try {
       const response = await fetch(url, config)
-      
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const text = await response.text()
+        throw new Error(
+          `HTTP ${response.status} - ${response.statusText} → ${text}`
+        )
       }
-      
+
       return await response.json()
     } catch (error) {
       console.error('API Error:', error)
