@@ -1,17 +1,20 @@
 import React, { useState } from 'react'
-import { FileText, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { FileText, CheckCircle, XCircle, AlertTriangle, Sparkles } from 'lucide-react'
 import { Button } from '@/components/common/Button'
 import { TextArea } from '@/components/common/Input'
 import { FileUpload } from '@/components/common/FileUpload'
 import { ErrorMessage } from '../../components/features/ErrorMessage/ErrorMessage'
+import { AISuggestions } from '@/components/features/ResumeMatcher'
 import { resumeService } from '@/api/services/resumeService'
 
 export const SingleMatchPage = () => {
   const [resumeFile, setResumeFile] = useState(null)
   const [jdText, setJdText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
+  const [includeAI, setIncludeAI] = useState(false)
 
   const handleSubmit = async () => {
     if (!resumeFile || !jdText) {
@@ -24,7 +27,7 @@ export const SingleMatchPage = () => {
     setResult(null)
 
     try {
-      const data = await resumeService.singleMatch(resumeFile, jdText)
+      const data = await resumeService.singleMatch(resumeFile, jdText, includeAI)
       setResult(data)
     } catch (err) {
       setError(err.message)
@@ -33,11 +36,35 @@ export const SingleMatchPage = () => {
     }
   }
 
+  const handleGetAI = async () => {
+    if (!resumeFile || !jdText) {
+      setError('Please analyze the resume first')
+      return
+    }
+
+    setAiLoading(true)
+    setError('')
+
+    try {
+      const aiData = await resumeService.getAIImprovements(resumeFile, jdText)
+      setResult(prev => ({
+        ...prev,
+        ai_suggestions: aiData.ai_suggestions,
+        ai_provider: aiData.ai_provider
+      }))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   const handleReset = () => {
     setResumeFile(null)
     setJdText('')
     setResult(null)
     setError('')
+    setIncludeAI(false)
   }
 
   const getResultIcon = (color) => {
@@ -82,7 +109,6 @@ export const SingleMatchPage = () => {
         {/* Input Section */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div className="grid md:grid-cols-2 gap-6 text-black text-sm">
-            {/* Left: File Upload */}
             <div>
               <FileUpload
                 file={resumeFile}
@@ -93,7 +119,6 @@ export const SingleMatchPage = () => {
               />
             </div>
 
-            {/* Right: Job Description */}
             <div>
               <TextArea
                 label="Job Description"
@@ -104,6 +129,30 @@ export const SingleMatchPage = () => {
                 required
               />
             </div>
+          </div>
+
+          {/* AI Toggle */}
+          <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeAI}
+                onChange={(e) => setIncludeAI(e.target.checked)}
+                className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+              />
+              <div className="flex items-center gap-2">
+                <Sparkles className="text-purple-600" size={20} />
+                <span className="font-medium text-gray-800">
+                  Include AI-Powered Improvement Suggestions
+                </span>
+                <span className="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full">
+                  Recommended
+                </span>
+              </div>
+            </label>
+            <p className="text-sm text-gray-600 mt-2 ml-8">
+              Get personalized, actionable advice to improve your resume and increase your match score
+            </p>
           </div>
 
           {/* Action Buttons */}
@@ -118,6 +167,15 @@ export const SingleMatchPage = () => {
                 Analyze Match
               </Button>
             </div>
+            {result && !result.ai_suggestions && !aiLoading && (
+              <button
+                onClick={handleGetAI}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition flex items-center gap-2"
+              >
+                <Sparkles size={20} />
+                Get AI Suggestions
+              </button>
+            )}
             {result && (
               <button
                 onClick={handleReset}
@@ -155,10 +213,18 @@ export const SingleMatchPage = () => {
               </div>
             </div>
 
+            {/* AI Suggestions */}
+            {(result.ai_suggestions || aiLoading) && (
+              <AISuggestions 
+                suggestions={result.ai_suggestions}
+                provider={result.ai_provider}
+                isLoading={aiLoading}
+              />
+            )}
+
             {/* Skills Analysis */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Matching Skills */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="grid md:grid-cols-2 gap-6 text-black">
+              <div className="bg-white rounded-lg shadow-lg p-6 text-black">
                 <div className="flex items-center gap-2 mb-4">
                   <CheckCircle className="text-green-600" size={24} />
                   <h3 className="text-xl font-bold text-gray-800">
@@ -181,7 +247,6 @@ export const SingleMatchPage = () => {
                 )}
               </div>
 
-              {/* Missing Skills */}
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <XCircle className="text-red-600" size={24} />

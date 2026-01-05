@@ -10,7 +10,7 @@ from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from fastapi.middleware.cors import CORSMiddleware
-
+from services.ai_service import ai_service
 
 from utils.jd_matcher import match_jd_to_resumes_method_3
 from utils.single_cv_jd_matcher import extract_pdf_text, clean_text, skill_match
@@ -109,7 +109,8 @@ def match_jd(request: JDRequest):
 @app.post("/single-match")
 async def single_match(
     resume: UploadFile = File(...),
-    jd_text: str = Form(...)
+    jd_text: str = Form(...), 
+    include_ai: bool = Form(False),
 ):
     # 1️⃣ Extract resume text
     resume_text = extract_pdf_text(resume)
@@ -133,7 +134,8 @@ async def single_match(
     else:
         result = "⚠️ Weak Match – Needs Improvement"
 
-    return {
+    # 5️⃣ Base response
+    response = {
         "match_score": match_percentage,
         "result": result,
         "total_jd_skills": len(jd_skills),
@@ -141,6 +143,23 @@ async def single_match(
         "missing_skills": missing_skills
     }
 
+    # 6️⃣ Optional AI Suggestions
+    if include_ai:
+        ai_result = ai_service.generate_resume_improvements(
+            resume_text=resume_text[:2000],
+            jd_text=jd_text[:1500],
+            match_score=match_percentage,
+            fit_skills=fit_skills,
+            missing_skills=missing_skills
+        )
+
+        if ai_result.get("success"):
+            response["ai_suggestions"] = ai_result["suggestions"]
+            response["ai_provider"] = ai_result.get("provider")
+            response["ai_model"] = ai_result.get("model")
+        else:
+            response["ai_error"] = ai_result.get("error")
+    return response
 
 # ----------Resume PDF Endpoint ----------
 def get_resume_pdf(filename:str):
